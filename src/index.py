@@ -57,26 +57,6 @@ class ServiceController:
         except Exception as e:
             return False, str(e)
 
-    def _write_unit_file(self):
-        """Write the systemd unit file (requires root)."""
-        unit_text = f"""[Unit]
-Description=Hello Pi background worker (system service)
-
-[Service]
-Type=simple
-ExecStart={self._python_exe} {self._service_script}
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-"""
-
-        # This will fail with PermissionError if not root
-        self._unit_path.write_text(unit_text)
-
-        # Reload system units so systemd sees the new service
-        self._run_systemctl("daemon-reload")
-
     # ---------- public API ----------
 
     def ensure_installed(self):
@@ -88,18 +68,6 @@ WantedBy=multi-user.target
         """
         if not self._service_script.exists():
             return False, f"Service script not found: {self._service_script}"
-
-        if not self._unit_path.exists():
-            try:
-                self._write_unit_file()
-                return True, f"Installed system service: {self._unit_path}"
-            except PermissionError as e:
-                return False, (
-                    f"Permission denied writing {self._unit_path}.\n"
-                    f"Run this once as root (e.g. with sudo), or install the unit via an installer.\n{e}"
-                )
-            except Exception as e:
-                return False, f"Error writing unit file: {e}"
         else:
             # Already installed; ensure systemd knows about it
             self._run_systemctl("daemon-reload")
