@@ -28,6 +28,7 @@ echo "📦 Installing $APP_ID..."
 
 # Create directories
 mkdir -p "$APP_DIR"
+mkdir -p "$APP_DIR/src"
 mkdir -p "$DESKTOP_DIR"
 
 # Copy files
