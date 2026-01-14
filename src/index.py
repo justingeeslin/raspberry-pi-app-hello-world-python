@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
 
-SERVICE_NAME = "hello-pi-worker.service"      # systemd unit name
+SERVICE_NAME = "hello-pi.service"      # systemd unit name
 WORKER_REL_PATH = Path("src/worker.py")       # script the service runs
 
 
@@ -70,7 +70,7 @@ class ServiceController:
             return False, f"Service script not found: {self._service_script}"
         else:
             # Already installed; ensure systemd knows about it
-            self._run_systemctl("daemon-reload")
+            # self._run_systemctl("daemon-reload")
             return True, f"Service already installed: {self._unit_path}"
 
     def start(self):
