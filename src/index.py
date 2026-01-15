@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
+import os
+import json
+from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox
-from pathlib import Path
+from tkinter import filedialog
 
-SERVICE_NAME = "hello-pi.service"      # systemd unit name
+APP_ID="hello-pi"
+APP_DIR=f"/etc/{APP_ID}"
+CONFIG_PATH = Path(f"/etc/{APP_ID}/config.json")
+
+SERVICE_NAME = f"{APP_ID}.service"      # systemd unit name
 WORKER_REL_PATH = Path("src/worker.py")       # script the service runs
 
 
@@ -93,6 +100,33 @@ class ServiceController:
         return self._run_systemctl("is-active", self.service_name)
 
 
+def load_config() -> dict:
+    try:
+        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except Exception:
+        # If config is corrupt or unreadable, don’t crash the UI
+        return {}
+
+def save_config(data: dict) -> tuple[bool, str]:
+    try:
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = CONFIG_PATH.with_suffix(".json")
+
+        # Write atomically (write tmp then replace)
+        with tmp_path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+
+        # os.replace(tmp_path, CONFIG_PATH)
+        return True, f"Saved: {CONFIG_PATH}"
+    except PermissionError as e:
+        return False, f"Permission denied writing {CONFIG_PATH}. {e}"
+    except Exception as e:
+        return False, str(e)
+
 # ---------- Tkinter GUI ----------
 
 def main():
@@ -100,7 +134,7 @@ def main():
 
     root = tk.Tk()
     root.title("Hello Pi System Service Control")
-    root.geometry("360x190")
+    root.geometry("640x480")
 
     frame = tk.Frame(root, padx=10, pady=10)
     frame.pack(expand=True, fill="both")
@@ -113,6 +147,12 @@ def main():
 
     btn_frame = tk.Frame(frame)
     btn_frame.pack(pady=5)
+    
+    cfg = load_config()
+    
+    folder_var = tk.StringVar(value=cfg.get("folder", ""))
+    mode_var = tk.StringVar(value=cfg.get("mode", "mode_a"))  # radio choice
+    note_var = tk.StringVar(value=cfg.get("note", ""))        # text field
 
     status_var = tk.StringVar(value="Status: (checking...)")
 
@@ -137,6 +177,51 @@ def main():
             status_var.set(f"Status: {msg}")
         else:
             status_var.set(f"Status: unknown ({msg})")
+
+    # ---------- Config UI ----------
+    cfg_frame = tk.LabelFrame(frame, text="Service Config", padx=10, pady=10)
+    cfg_frame.pack(fill="x", pady=(10, 0))
+    
+    # Folder picker row
+    tk.Label(cfg_frame, text="Folder:").grid(row=0, column=0, sticky="w")
+    folder_entry = tk.Entry(cfg_frame, textvariable=folder_var, width=30)
+    folder_entry.grid(row=0, column=1, sticky="we", padx=(5, 5))
+    
+    def browse_folder():
+        initial = folder_var.get() or str(Path.home())
+        selected = filedialog.askdirectory(initialdir=initial)
+        if selected:
+            folder_var.set(selected)
+    
+    tk.Button(cfg_frame, text="Browse…", command=browse_folder).grid(row=0, column=2, sticky="e")
+    
+    # Radio buttons row
+    tk.Label(cfg_frame, text="Mode:").grid(row=1, column=0, sticky="w", pady=(8, 0))
+    radio_row = tk.Frame(cfg_frame)
+    radio_row.grid(row=1, column=1, columnspan=2, sticky="w", pady=(8, 0))
+    
+    tk.Radiobutton(radio_row, text="Mode A", variable=mode_var, value="mode_a").pack(side="left", padx=(0, 10))
+    tk.Radiobutton(radio_row, text="Mode B", variable=mode_var, value="mode_b").pack(side="left")
+    
+    # Text field row
+    tk.Label(cfg_frame, text="Note:").grid(row=2, column=0, sticky="w", pady=(8, 0))
+    tk.Entry(cfg_frame, textvariable=note_var, width=30).grid(row=2, column=1, columnspan=2, sticky="we", pady=(8, 0))
+    
+    cfg_frame.grid_columnconfigure(1, weight=1)
+    
+    def on_save_config():
+        data = {
+            "folder": folder_var.get().strip(),
+            "mode": mode_var.get().strip(),
+            "note": note_var.get().strip(),
+        }
+        ok, msg = save_config(data)
+        if ok:
+            messagebox.showinfo("Config Saved", msg)
+        else:
+            messagebox.showerror("Save Failed", msg)
+    
+    tk.Button(cfg_frame, text="Save Config", command=on_save_config).grid(row=3, column=0, columnspan=3, pady=(10, 0), sticky="w")
 
     tk.Button(
         btn_frame, text="Start Service",

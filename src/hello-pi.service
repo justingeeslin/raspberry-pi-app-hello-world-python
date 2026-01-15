@@ -8,6 +8,10 @@ Type=simple
 User=hello-pi
 Group=hello-pi
 
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
 WorkingDirectory=/opt/hello-pi
 ExecStart=/usr/bin/python3 /opt/hello-pi/src/worker.py
 
