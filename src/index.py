@@ -87,6 +87,14 @@ class ServiceController:
             return False, msg
 
         return self._run_systemctl("start", self.service_name)
+        
+    def restart(self):
+        """Install (if needed) and start the service."""
+        ok, msg = self.ensure_installed()
+        if not ok:
+            return False, msg
+        
+        return self._run_systemctl("restart", self.service_name)
 
     def stop(self):
         """Stop the service."""
@@ -164,6 +172,15 @@ def main():
             if "Installed system service" in msg:
                 messagebox.showinfo("Service Installed", msg)
         update_status()
+        
+    def restart_service():
+        ok, msg = controller.restart()
+        if not ok:
+            messagebox.showerror("Restart failed", msg)
+        else:
+            if "Installed system service" in msg:
+                messagebox.showinfo("Service Installed", msg)
+        update_status()
 
     def stop_service():
         ok, msg = controller.stop()
@@ -217,21 +234,28 @@ def main():
         }
         ok, msg = save_config(data)
         if ok:
-            messagebox.showinfo("Config Saved", msg)
+            pass
+            # messagebox.showinfo("Config Saved", msg)
         else:
-            messagebox.showerror("Save Failed", msg)
+            messagebox.showerror("Config Save Failed", msg)
     
-    tk.Button(cfg_frame, text="Save Config", command=on_save_config).grid(row=3, column=0, columnspan=3, pady=(10, 0), sticky="w")
+    # tk.Button(cfg_frame, text="Save Config", command=on_save_config).grid(row=3, column=0, columnspan=3, pady=(10, 0), sticky="w")
+    
+    def save_config_restart_service():
+        on_save_config()
+        restart_service()
+        
+    tk.Button(cfg_frame, text="Update", command=save_config_restart_service).grid(row=3, column=0, columnspan=3, pady=(10, 0), sticky="w")
 
-    tk.Button(
-        btn_frame, text="Start Service",
-        width=14, command=start_service
-    ).pack(side="left", padx=5)
-
-    tk.Button(
-        btn_frame, text="Stop Service",
-        width=14, command=stop_service
-    ).pack(side="left", padx=5)
+    # tk.Button(
+    #     btn_frame, text="Start Service",
+    #     width=14, command=start_service
+    # ).pack(side="left", padx=5)
+# 
+    # tk.Button(
+    #     btn_frame, text="Stop Service",
+    #     width=14, command=stop_service
+    # ).pack(side="left", padx=5)
 
     status_label = tk.Label(frame, textvariable=status_var)
     status_label.pack(pady=(10, 0))
