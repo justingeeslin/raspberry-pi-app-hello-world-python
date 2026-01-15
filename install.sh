@@ -52,6 +52,27 @@ else
     "$SERVICE_USER"
 fi
 
+if getent group $SERVICE_USER > /dev/null; then
+  echo "Group exists"
+else
+  echo "👤 Creating service group: $SERVICE_USER"  
+  groupadd $SERVICE_USER
+  usermod -aG $SERVICE_USER $SERVICE_USER
+ 
+fi
+
+# Add the current installing user to the service group 
+usermod -aG $SERVICE_USER $SUDO_USER
+
+# Create directory for saving config
+echo "🛠️ Creating config path in etc"
+mkdir -p /etc/$SERVICE_USER
+chown root:$SERVICE_USER /etc/$SERVICE_USER
+chmod 775 /etc/$SERVICE_USER
+touch /etc/$APP_ID/config.json
+chown root:$SUDO_USER /etc/$APP_ID/config.json
+chmod 775 /etc/$APP_ID/config.json
+
 # ==============================
 # INSTALL APP FILES (system-wide)
 # ==============================
